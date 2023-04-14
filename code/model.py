@@ -101,6 +101,7 @@ class LightGCN(BasicModel):
         self.embedding_item = torch.nn.Embedding(
             num_embeddings=self.num_items, embedding_dim=self.latent_dim)
         self.outModel=nn.Linear(3*self.latent_dim,self.latent_dim)
+        self.outModel2=nn.Linear(3*self.latent_dim,3*self.latent_dim)
         if self.config['pretrain'] == 0:
 #             nn.init.xavier_uniform_(self.embedding_user.weight, gain=1)
 #             nn.init.xavier_uniform_(self.embedding_item.weight, gain=1)
@@ -196,8 +197,11 @@ class LightGCN(BasicModel):
         reg_loss = (1/2)*(userEmb0.norm(2).pow(2) + 
                          posEmb0.norm(2).pow(2)  +
                          negEmb0.norm(2).pow(2))/float(len(users))
-        pos_scores = self.outModel(torch.cat([users_emb,pos_emb,torch.mul(users_emb, pos_emb)],dim=1))
-        neg_scores = self.outModel(torch.cat([users_emb,neg_emb,torch.mul(users_emb, neg_emb)],dim=1))
+        pos_scores=torch.mul(users_emb, pos_emb)
+        neg_scores=torch.mul(users_emb, neg_emb)
+
+        #pos_scores = self.outModel(self.outModel2(torch.cat([users_emb,pos_emb,torch.mul(users_emb, pos_emb)],dim=1)))
+        #neg_scores = self.outModel(self.outModel2(torch.cat([users_emb,neg_emb,torch.mul(users_emb, neg_emb)],dim=1)))
         
         loss = torch.mean(torch.nn.functional.softplus(neg_scores - pos_scores))
         
