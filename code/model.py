@@ -197,9 +197,10 @@ class LightGCN(BasicModel):
         reg_loss = (1/2)*(userEmb0.norm(2).pow(2) + 
                          posEmb0.norm(2).pow(2)  +
                          negEmb0.norm(2).pow(2))/float(len(users))
-        pos_scores=torch.mul(users_emb, pos_emb)
-        neg_scores=torch.mul(users_emb, neg_emb)
-
+        pos_scores = torch.mul(users_emb, pos_emb)
+        pos_scores = torch.sum(pos_scores, dim=1)
+        neg_scores = torch.mul(users_emb, neg_emb)
+        neg_scores = torch.sum(neg_scores, dim=1)
         #pos_scores = self.outModel(self.outModel2(torch.cat([users_emb,pos_emb,torch.mul(users_emb, pos_emb)],dim=1)))
         #neg_scores = self.outModel(self.outModel2(torch.cat([users_emb,neg_emb,torch.mul(users_emb, neg_emb)],dim=1)))
         
