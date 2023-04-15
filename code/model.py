@@ -100,8 +100,8 @@ class LightGCN(BasicModel):
             num_embeddings=self.num_users, embedding_dim=self.latent_dim)
         self.embedding_item = torch.nn.Embedding(
             num_embeddings=self.num_items, embedding_dim=self.latent_dim)
-        self.outModel=nn.Linear(3*self.latent_dim,self.latent_dim)
-        self.outModel2=nn.Linear(3*self.latent_dim,3*self.latent_dim)
+        self.outModel=nn.Linear(3*self.latent_dim,1)
+        self.outModel2=nn.Linear(self.latent_dim,1)
         if self.config['pretrain'] == 0:
 #             nn.init.xavier_uniform_(self.embedding_user.weight, gain=1)
 #             nn.init.xavier_uniform_(self.embedding_item.weight, gain=1)
@@ -176,9 +176,14 @@ class LightGCN(BasicModel):
     
     def getUsersRating(self, users):
         all_users, all_items = self.computer()
-        users_emb = all_users[users.long()]
-        items_emb = all_items
-        rating = self.f(torch.matmul(users_emb, items_emb.t()))
+        users_emb = all_users[users.long()].detach()
+        items_emb = all_items.detach()
+        #rating = self.f(torch.matmul(users_emb, items_emb.t()))
+
+        rating=torch.zeros((users_emb.shape[0],items_emb.shape[0]))
+
+        for u in range(users_emb.shape[0]):            
+            rating[u,:]=torch.sigmoid(self.outModel(torch.cat([users_emb[u,:].repeat((items_emb.shape[0],1)),items_emb,torch.mul(users_emb[u,:], items_emb)],dim=1)))[:,0]
         return rating
     
     def getEmbedding(self, users, pos_items, neg_items):
@@ -196,14 +201,14 @@ class LightGCN(BasicModel):
         userEmb0,  posEmb0, negEmb0) = self.getEmbedding(users.long(), pos.long(), neg.long())
         reg_loss = (1/2)*(userEmb0.norm(2).pow(2) + 
                          posEmb0.norm(2).pow(2)  +
-                         negEmb0.norm(2).pow(2))/float(len(users))
-        pos_scores = torch.mul(users_emb, pos_emb)
-        pos_scores = torch.sum(pos_scores, dim=1)
-        neg_scores = torch.mul(users_emb, neg_emb)
-        neg_scores = torch.sum(neg_scores, dim=1)
-        #pos_scores = self.outModel(self.outModel2(torch.cat([users_emb,pos_emb,torch.mul(users_emb, pos_emb)],dim=1)))
-        #neg_scores = self.outModel(self.outModel2(torch.cat([users_emb,neg_emb,torch.mul(users_emb, neg_emb)],dim=1)))
-        
+                         negEmb0.norm(2).pow(2)+
+                         (self.outModel2.weight.norm(2).pow(2)+self.outModel.weight.norm(2).pow(2))*0.1)/float(len(users))
+        #pos_scores = torch.mul(users_emb, pos_emb)
+        #pos_scores = torch.sum(pos_scores, dim=1)
+        #neg_scores = torch.mul(users_emb, neg_emb)
+        #neg_scores = torch.sum(neg_scores, dim=1)
+        pos_scores = (self.outModel(torch.cat([users_emb,pos_emb,torch.mul(users_emb, pos_emb)],dim=1)))
+        neg_scores = (self.outModel(torch.cat([users_emb,neg_emb,torch.mul(users_emb, neg_emb)],dim=1)))
         loss = torch.mean(torch.nn.functional.softplus(neg_scores - pos_scores))
         
         return loss, reg_loss
