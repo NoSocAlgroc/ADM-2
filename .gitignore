@@ -9,10 +9,10 @@
 *.cfg
 *.sqlite3
 checkpoints/
-runs/*
-!runs/Original*
-!runs/1Layer*
-!runs/2Layer*
+code/runs/*
+!code/runs/Original*
+!code/runs/1Layer*
+!code/runs/2Layer*
 __pycache__/
 *.npy
 *.so
